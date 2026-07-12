@@ -83,6 +83,4 @@ You can access the live application here: [https://realtime-private-messenger.ve
 
 🎥 Application Demo
 -------------------
-Sample Link - 
-
 _Since this is a web-based application, a screen recording has been provided in the link above demonstrating the login flow, sending a friend request, accepting the request, and real-time messaging functionality._
