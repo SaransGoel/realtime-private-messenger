@@ -4,6 +4,7 @@ import { io } from 'socket.io-client';
 // Replace the entire line with this (make sure you use YOUR specific Render URL)
 const BACKEND_URL = 'https://realtime-private-messenger.onrender.com';
 const socket = io(BACKEND_URL);
+console.log("The Backend URL is currently:", BACKEND_URL);
 
 function App() {
   const [isConnected, setIsConnected] = useState(socket.connected);
