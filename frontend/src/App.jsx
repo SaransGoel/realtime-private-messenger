@@ -2,7 +2,10 @@ import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 
 // This tells the app to use the Vercel variable if it exists, otherwise fallback to localhost
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '${BACKEND_URL}';
+// This reads the variable you set in Vercel. 
+// If it's not found (like when running locally), it defaults to localhost.
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '${BACKEND_URL}';
 const socket = io(BACKEND_URL);
 
 function App() {
@@ -73,7 +76,7 @@ function App() {
   useEffect(() => {
     const relationship = selectedUser ? getContactInfo(selectedUser.id).status : 'none';
     if (currentUser && selectedUser && !isEditingProfile && relationship === 'accepted') {
-      fetch(`http://localhost:5000/api/messages/${currentUser.id}/${selectedUser.id}`)
+      fetch(`${BACKEND_URL}/api/messages/${currentUser.id}/${selectedUser.id}`)
         .then(res => res.json())
         .then(data => setMessages(data))
         .catch(err => console.error(err));
@@ -87,11 +90,11 @@ function App() {
   }, [messages]);
 
   const fetchUsers = () => {
-    fetch('http://localhost:5000/api/users').then(res => res.json()).then(data => setUsers(data));
+    fetch('${BACKEND_URL}/api/users').then(res => res.json()).then(data => setUsers(data));
   };
 
   const fetchContacts = (userId) => {
-    fetch(`http://localhost:5000/api/contacts/${userId}`).then(res => res.json()).then(data => setContacts(data));
+    fetch(`${BACKEND_URL}/api/contacts/${userId}`).then(res => res.json()).then(data => setContacts(data));
   };
 
   const handleAuth = async (e) => {
@@ -99,7 +102,7 @@ function App() {
     if (!usernameInput.trim() || !passwordInput.trim()) return alert("Fields required.");
     const endpoint = isLoginMode ? '/api/login' : '/api/register';
     try {
-      const response = await fetch(`http://localhost:5000${endpoint}`, {
+      const response = await fetch(`${BACKEND_URL}${endpoint}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: usernameInput, password: passwordInput }),
       });
@@ -117,7 +120,7 @@ function App() {
     e.preventDefault();
     if (!editUsername.trim() || !editPassword.trim()) return alert("Fields cannot be empty.");
     try {
-      const res = await fetch(`http://localhost:5000/api/users/${currentUser.id}`, {
+      const res = await fetch(`${BACKEND_URL}/api/users/${currentUser.id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: editUsername, password: editPassword })
       });
