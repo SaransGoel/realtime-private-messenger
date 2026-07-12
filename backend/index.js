@@ -154,4 +154,14 @@ app.get('/api/messages/:user1/:user2', async (req, res) => {
     } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// Add this route to your backend/index.js
+app.get('/api/users', async (req, res) => {
+    try {
+        const users = await User.find({});
+        res.json(users);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

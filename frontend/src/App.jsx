@@ -73,7 +73,7 @@ function App() {
   useEffect(() => {
     const relationship = selectedUser ? getContactInfo(selectedUser.id).status : 'none';
     if (currentUser && selectedUser && !isEditingProfile && relationship === 'accepted') {
-      fetch(`${BACKEND_URL}/api/messages/${currentUser.id}/${selectedUser.id}`)
+      ${BACKEND_URL}`${BACKEND_URL}/api/messages/${currentUser.id}/${selectedUser.id}`)
         .then(res => res.json())
         .then(data => setMessages(data))
         .catch(err => console.error(err));
@@ -87,11 +87,11 @@ function App() {
   }, [messages]);
 
   const fetchUsers = () => {
-    fetch('${BACKEND_URL}/api/users').then(res => res.json()).then(data => setUsers(data));
+    ${BACKEND_URL}'${BACKEND_URL}/api/users').then(res => res.json()).then(data => setUsers(data));
   };
 
   const fetchContacts = (userId) => {
-    fetch(`${BACKEND_URL}/api/contacts/${userId}`).then(res => res.json()).then(data => setContacts(data));
+    ${BACKEND_URL}`${BACKEND_URL}/api/contacts/${userId}`).then(res => res.json()).then(data => setContacts(data));
   };
 
   const handleAuth = async (e) => {
@@ -99,7 +99,7 @@ function App() {
     if (!usernameInput.trim() || !passwordInput.trim()) return alert("Fields required.");
     const endpoint = isLoginMode ? '/api/login' : '/api/register';
     try {
-      const response = await fetch(`${BACKEND_URL}${endpoint}`, {
+      const response = await ${BACKEND_URL}`${BACKEND_URL}${endpoint}`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: usernameInput, password: passwordInput }),
       });
@@ -117,7 +117,7 @@ function App() {
     e.preventDefault();
     if (!editUsername.trim() || !editPassword.trim()) return alert("Fields cannot be empty.");
     try {
-      const res = await fetch(`${BACKEND_URL}/api/users/${currentUser.id}`, {
+      const res = await ${BACKEND_URL}`${BACKEND_URL}/api/users/${currentUser.id}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: editUsername, password: editPassword })
       });
