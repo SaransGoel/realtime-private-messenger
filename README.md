@@ -11,12 +11,10 @@ You can access the live application here: [https://realtime-private-messenger.ve
 📋 Project Submission Details
 -----------------------------
 
-*   **GitHub Repository:** \[Insert your GitHub URL here\]
+*   **GitHub Repository:** \(https://github.com/SaransGoel/realtime-private-messenger)
     
-*   **Screen Recording/Video:** \[Insert your Google Drive link here\]
-    
-*   **Deadline:** \[Insert Date/Time\]
-    
+*   **Screen Recording/Video:** \(https://drive.google.com/file/d/1WMKynfi4CnfM3Qv5CIB3kunIfA7UOHiY/view?usp=sharing)
+
 
 ✨ Features
 ----------
@@ -85,6 +83,6 @@ You can access the live application here: [https://realtime-private-messenger.ve
 
 🎥 Application Demo
 -------------------
-Sample Link - https://drive.google.com/file/d/1WMKynfi4CnfM3Qv5CIB3kunIfA7UOHiY/view?usp=sharing
+Sample Link - 
 
 _Since this is a web-based application, a screen recording has been provided in the link above demonstrating the login flow, sending a friend request, accepting the request, and real-time messaging functionality._
