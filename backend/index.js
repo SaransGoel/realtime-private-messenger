@@ -3,7 +3,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const cors = require('cors');
-const db = require('./db/database.js');
+const { connectDB, User, Message, Contact } = require('./db/database.js');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -11,83 +11,67 @@ const PORT = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+connectDB(); // Initialize MongoDB
+
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:5173",
-    methods: ["GET", "POST"]
-  }
+  cors: { origin: "*", methods: ["GET", "POST", "PUT"] } 
 });
 
 const activeSockets = {};
 
+// Helper to format messages
+const formatMessage = (msg) => ({
+    id: msg.id,
+    sender_id: msg.sender_id.id || msg.sender_id.toString(),
+    receiver_id: msg.receiver_id.toString(),
+    content: msg.content,
+    timestamp: msg.timestamp,
+    status: msg.status,
+    username: msg.sender_id.username 
+});
+
 io.on('connection', (socket) => {
-  socket.on('register_user', (userId) => {
+  socket.on('register_user', async (userId) => {
     activeSockets[userId] = socket.id;
-    db.run('UPDATE users SET is_online = 1 WHERE id = ?', [userId], () => {
-        io.emit('user_status_changed'); 
-    });
+    await User.findByIdAndUpdate(userId, { is_online: true });
+    io.emit('user_status_changed'); 
   });
 
-  // --- NEW: Handle Sending Invitations ---
-  socket.on('send_invite', (data) => {
+  socket.on('send_invite', async (data) => {
     const { sender_id, receiver_id } = data;
-    db.run('INSERT INTO contacts (sender_id, receiver_id, status) VALUES (?, ?, ?)', 
-      [sender_id, receiver_id, 'pending'], function(err) {
-        if (err) return console.error(err);
-        const newContact = { id: this.lastID, sender_id, receiver_id, status: 'pending' };
-        
-        // Notify both users instantly
-        if (activeSockets[receiver_id]) io.to(activeSockets[receiver_id]).emit('contact_updated', newContact);
-        socket.emit('contact_updated', newContact);
-    });
+    const contact = await Contact.create({ sender_id, receiver_id, status: 'pending' });
+    if (activeSockets[receiver_id]) io.to(activeSockets[receiver_id]).emit('contact_updated', contact);
+    socket.emit('contact_updated', contact);
   });
 
-  // --- NEW: Handle Accepting/Rejecting Invitations ---
-  socket.on('update_invite', (data) => {
+  socket.on('update_invite', async (data) => {
     const { contact_id, status, sender_id, receiver_id } = data;
-    
     if (status === 'rejected') {
-        db.run('DELETE FROM contacts WHERE id = ?', [contact_id], () => {
-            const payload = { id: contact_id, status: 'none' }; // Tells frontend to remove it
-            if (activeSockets[sender_id]) io.to(activeSockets[sender_id]).emit('contact_updated', payload);
-            if (activeSockets[receiver_id]) io.to(activeSockets[receiver_id]).emit('contact_updated', payload);
-        });
+        await Contact.findByIdAndDelete(contact_id);
+        const payload = { id: contact_id, status: 'none' }; 
+        if (activeSockets[sender_id]) io.to(activeSockets[sender_id]).emit('contact_updated', payload);
+        if (activeSockets[receiver_id]) io.to(activeSockets[receiver_id]).emit('contact_updated', payload);
     } else {
-        db.run('UPDATE contacts SET status = ? WHERE id = ?', [status, contact_id], () => {
-            db.get('SELECT * FROM contacts WHERE id = ?', [contact_id], (err, row) => {
-                if (row) {
-                    if (activeSockets[row.sender_id]) io.to(activeSockets[row.sender_id]).emit('contact_updated', row);
-                    if (activeSockets[row.receiver_id]) io.to(activeSockets[row.receiver_id]).emit('contact_updated', row);
-                }
-            });
-        });
+        const updated = await Contact.findByIdAndUpdate(contact_id, { status }, { new: true });
+        if (activeSockets[sender_id]) io.to(activeSockets[sender_id]).emit('contact_updated', updated);
+        if (activeSockets[receiver_id]) io.to(activeSockets[receiver_id]).emit('contact_updated', updated);
     }
   });
 
-  socket.on('send_private_message', (data) => {
+  socket.on('send_private_message', async (data) => {
     const { sender_id, receiver_id, content } = data;
+    let message = await Message.create({ sender_id, receiver_id, content });
+    message = await message.populate('sender_id', 'username');
     
-    db.run('INSERT INTO messages (sender_id, receiver_id, content) VALUES (?, ?, ?)', 
-    [sender_id, receiver_id, content], function(err) {
-        if (err) return console.error(err.message);
-        
-        db.get(`
-            SELECT messages.*, users.username 
-            FROM messages 
-            JOIN users ON messages.sender_id = users.id 
-            WHERE messages.id = ?
-        `, [this.lastID], (err, row) => {
-            if (!err && row) {
-                const receiverSocketId = activeSockets[receiver_id];
-                if (receiverSocketId) io.to(receiverSocketId).emit('receive_private_message', row);
-                socket.emit('receive_private_message', row);
-            }
-        });
-    });
+    const formattedMsg = formatMessage(message);
+    const receiverSocketId = activeSockets[receiver_id];
+    
+    if (receiverSocketId) io.to(receiverSocketId).emit('receive_private_message', formattedMsg);
+    socket.emit('receive_private_message', formattedMsg);
   });
 
-  socket.on('disconnect', () => {
+  socket.on('disconnect', async () => {
     let disconnectedUserId = null;
     for (const [userId, socketId] of Object.entries(activeSockets)) {
         if (socketId === socket.id) {
@@ -97,77 +81,77 @@ io.on('connection', (socket) => {
         }
     }
     if (disconnectedUserId) {
-        db.run('UPDATE users SET is_online = 0 WHERE id = ?', [disconnectedUserId], () => {
-            io.emit('user_status_changed');
-        });
+        await User.findByIdAndUpdate(disconnectedUserId, { is_online: false });
+        io.emit('user_status_changed');
     }
   });
 });
 
 // --- REST APIs ---
-app.post('/api/register', (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
-    db.run('INSERT INTO users (username, password, is_online) VALUES (?, ?, 1)', [username, password], function(err) {
-        if (err) {
-            if (err.message.includes('UNIQUE')) return res.status(400).json({ error: 'Username already exists' });
-            return res.status(500).json({ error: err.message });
-        }
-        res.json({ id: this.lastID, username, is_online: 1 });
-    });
+app.post('/api/register', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+        const user = await User.create({ username, password, is_online: true });
+        res.json(user);
+    } catch (err) {
+        if (err.code === 11000) return res.status(400).json({ error: 'Username already exists' });
+        res.status(500).json({ error: err.message });
+    }
 });
 
-app.post('/api/login', (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
-    db.get('SELECT * FROM users WHERE username = ?', [username], (err, user) => {
-        if (err) return res.status(500).json({ error: err.message });
-        if (!user) return res.status(400).json({ error: 'User not found. Please register first.' });
+app.post('/api/login', async (req, res) => {
+    try {
+        const { username, password } = req.body;
+        if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
+        
+        const user = await User.findOne({ username });
+        if (!user) return res.status(400).json({ error: 'User not found.' });
         if (user.password !== password) return res.status(401).json({ error: 'Incorrect password.' });
-        db.run('UPDATE users SET is_online = 1 WHERE id = ?', [user.id]);
-        res.json({ id: user.id, username: user.username, is_online: 1 });
-    });
+        
+        user.is_online = true;
+        await user.save();
+        res.json(user);
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.put('/api/users/:id', (req, res) => {
-    const { id } = req.params;
-    const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Username and password required' });
-    db.run('UPDATE users SET username = ?, password = ? WHERE id = ?', [username, password, id], function(err) {
-        if (err) return res.status(500).json({ error: err.message });
+app.put('/api/users/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { username, password } = req.body;
+        await User.findByIdAndUpdate(id, { username, password });
         io.emit('user_status_changed');
         res.json({ success: true, username });
-    });
+    } catch (err) {
+        if (err.code === 11000) return res.status(400).json({ error: 'Username already taken' });
+        res.status(500).json({ error: err.message });
+    }
 });
 
-app.get('/api/users', (req, res) => {
-    db.all('SELECT id, username, is_online FROM users', [], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
+app.get('/api/users', async (req, res) => {
+    try {
+        const users = await User.find({}, 'username is_online');
+        res.json(users);
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// NEW API: Fetch contacts/invitations for a specific user
-app.get('/api/contacts/:userId', (req, res) => {
-    const { userId } = req.params;
-    db.all('SELECT * FROM contacts WHERE sender_id = ? OR receiver_id = ?', [userId, userId], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
+app.get('/api/contacts/:userId', async (req, res) => {
+    try {
+        const { userId } = req.params;
+        const contacts = await Contact.find({ $or: [{ sender_id: userId }, { receiver_id: userId }] });
+        res.json(contacts);
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.get('/api/messages/:user1/:user2', (req, res) => {
-    const { user1, user2 } = req.params;
-    const query = `
-        SELECT messages.*, users.username 
-        FROM messages JOIN users ON messages.sender_id = users.id 
-        WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)
-        ORDER BY messages.timestamp ASC
-    `;
-    db.all(query, [user1, user2, user2, user1], (err, rows) => {
-        if (err) return res.status(500).json({ error: err.message });
-        res.json(rows);
-    });
+app.get('/api/messages/:user1/:user2', async (req, res) => {
+    try {
+        const { user1, user2 } = req.params;
+        const messages = await Message.find({
+            $or: [ { sender_id: user1, receiver_id: user2 }, { sender_id: user2, receiver_id: user1 } ]
+        }).sort({ timestamp: 1 }).populate('sender_id', 'username');
+        
+        res.json(messages.map(formatMessage));
+    } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -1,40 +1,47 @@
-const sqlite3 = require('sqlite3').verbose();
-const path = require('path');
+const mongoose = require('mongoose');
 
-const dbPath = path.resolve(__dirname, 'chat.db');
-const db = new sqlite3.Database(dbPath, (err) => {
-    if (err) console.error('Database connection error:', err.message);
-    else console.log('📦 Connected to the SQLite database.');
-});
+const connectDB = async () => {
+    try {
+        await mongoose.connect(process.env.MONGO_URI);
+        console.log('📦 Connected to MongoDB Atlas.');
+    } catch (err) {
+        console.error('Database connection error:', err.message);
+    }
+};
 
-db.serialize(() => {
-    db.run(`CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
-        is_online BOOLEAN DEFAULT 0
-    )`);
+// This ensures Mongoose outputs 'id' instead of '_id' to perfectly match our frontend expectations
+const schemaOptions = {
+    toJSON: {
+        transform: (doc, ret) => {
+            ret.id = ret._id.toString();
+            delete ret._id;
+            delete ret.__v;
+        }
+    }
+};
 
-    db.run(`CREATE TABLE IF NOT EXISTS messages (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        sender_id INTEGER,
-        receiver_id INTEGER,
-        content TEXT NOT NULL,
-        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-        status TEXT DEFAULT 'sent', 
-        FOREIGN KEY (sender_id) REFERENCES users(id),
-        FOREIGN KEY (receiver_id) REFERENCES users(id)
-    )`);
+const userSchema = new mongoose.Schema({
+    username: { type: String, required: true, unique: true },
+    password: { type: String, required: true },
+    is_online: { type: Boolean, default: false }
+}, schemaOptions);
 
-    // NEW TABLE: Tracks contact invitations
-    db.run(`CREATE TABLE IF NOT EXISTS contacts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        sender_id INTEGER,
-        receiver_id INTEGER,
-        status TEXT DEFAULT 'pending',
-        FOREIGN KEY (sender_id) REFERENCES users(id),
-        FOREIGN KEY (receiver_id) REFERENCES users(id)
-    )`);
-});
+const messageSchema = new mongoose.Schema({
+    sender_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    receiver_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    content: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now },
+    status: { type: String, default: 'sent' }
+}, schemaOptions);
 
-module.exports = db;
+const contactSchema = new mongoose.Schema({
+    sender_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    receiver_id: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    status: { type: String, default: 'pending' }
+}, schemaOptions);
+
+const User = mongoose.model('User', userSchema);
+const Message = mongoose.model('Message', messageSchema);
+const Contact = mongoose.model('Contact', contactSchema);
+
+module.exports = { connectDB, User, Message, Contact };
