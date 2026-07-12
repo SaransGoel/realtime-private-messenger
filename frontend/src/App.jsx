@@ -1,11 +1,8 @@
 import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 
-// This tells the app to use the Vercel variable if it exists, otherwise fallback to localhost
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '${BACKEND_URL}';
-// This reads the variable you set in Vercel. 
-// If it's not found (like when running locally), it defaults to localhost.
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '${BACKEND_URL}';
+// Replace the entire line with this (make sure you use YOUR specific Render URL)
+const BACKEND_URL = 'https://realtime-private-messenger.onrender.com';
 const socket = io(BACKEND_URL);
 
 function App() {
