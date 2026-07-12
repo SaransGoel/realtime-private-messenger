@@ -1,7 +1,9 @@
 import { useEffect, useState, useRef } from 'react';
 import { io } from 'socket.io-client';
 
-const socket = io('http://localhost:5000');
+// This tells the app to use the Vercel variable if it exists, otherwise fallback to localhost
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5000';
+const socket = io(BACKEND_URL);
 
 function App() {
   const [isConnected, setIsConnected] = useState(socket.connected);
