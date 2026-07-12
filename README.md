@@ -58,29 +58,27 @@ You can access the live application here:[https://realtime-private-messenger.ver
 
 ### 1\. Clone the Repository
 
-Bash
-
-1.  git clone \[Your Repository Link\]
+1.  Bash git clone \[Your Repository Link\]
     
 2.  cd chat-assessment
     
 
 ### 2\. Backend Setup
 
-1.  Bashcd backend
+1.  Bash cd backend
     
 2.  Code snippetPORT=5000MONGO\_URI=your\_mongodb\_connection\_string
     
-3.  Bashnpm installnpm start
+3.  Bash npm install npm start
     
 
 ### 3\. Frontend Setup
 
-1.  Bashcd frontend
+1.  Bash cd frontend
     
-2.  Bashnpm install
+2.  Bash npm install
     
-3.  Bashnpm run dev
+3.  Bash npm run dev
     
 4.  Open the provided local URL (e.g., http://localhost:5173) in your browser.
     
@@ -90,5 +88,3 @@ Bash
 Sample Link - https://drive.google.com/file/d/1WMKynfi4CnfM3Qv5CIB3kunIfA7UOHiY/view?usp=sharing
 
 _Since this is a web-based application, a screen recording has been provided in the link above demonstrating the login flow, sending a friend request, accepting the request, and real-time messaging functionality._
-
-_This project was developed for \[Assessment Name/Class Name\]._
