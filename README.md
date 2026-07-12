@@ -87,6 +87,7 @@ Bash
 
 🎥 Application Demo
 -------------------
+Sample Link - https://drive.google.com/file/d/1WMKynfi4CnfM3Qv5CIB3kunIfA7UOHiY/view?usp=sharing
 
 _Since this is a web-based application, a screen recording has been provided in the link above demonstrating the login flow, sending a friend request, accepting the request, and real-time messaging functionality._
 
