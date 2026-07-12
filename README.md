@@ -6,7 +6,7 @@ A full-stack, real-time chat application designed for secure private communicati
 🚀 Live Web Application
 -----------------------
 
-You can access the live application here:[https://realtime-private-messenger.vercel.app/]
+You can access the live application here: [https://realtime-private-messenger.vercel.app/]
 
 📋 Project Submission Details
 -----------------------------
